@@ -1,0 +1,25 @@
+html[data-theme='light'] {
+  --bg: #f0f2f8;
+  --surface: #fff;
+  --surface2: #eef1f8;
+  --border: #d0d5e8;
+  --text: #1a1d2e;
+  --text-muted: #5a6480;
+  --viewer-bg: #e4e8f4;
+  --log-bg: #f4f6fb;
+  --log-text: #4a5580;
+  --scrollbar-hover: #b0b8d0;
+  --text-muted-15: rgb(90, 100, 128, 0.15);
+  --text-muted-10: rgb(90, 100, 128, 0.1);
+  --preview-bg: #dde2f0;
+}
+
+html[data-theme='light'] .theme-toggle {
+  .icon-sun {
+    display: none;
+  }
+
+  .icon-moon {
+    display: block;
+  }
+}

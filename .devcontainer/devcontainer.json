@@ -1,0 +1,49 @@
+{
+  "name": "MeshForge",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.pylance",
+        "ms-python.black-formatter",
+        "njpwerner.autodocstring",
+        "ryanluker.vscode-coverage-gutters",
+        "magicstack.magicpython",
+        "christian-kohler.path-intellisense",
+        "github.copilot",
+        "github.copilot-chat",
+        "ms-vscode.vscode-chat-customizations-evaluations",
+        "docker.docker",
+        "ms-azuretools.vscode-docker",
+        "github.vscode-github-actions",
+        "sonarsource.sonarlint-vscode",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next"
+      ],
+      "settings": {
+        "terminal.integrated.env.linux": {
+          "VIRTUAL_ENV": "/opt/venv",
+          "PATH": "/opt/venv/bin:${containerEnv:PATH}"
+        }
+      }
+    }
+  },
+  "postCreateCommand": "echo 'source /opt/venv/bin/activate' >> ~/.bashrc && /opt/venv/bin/python -c \"import importlib.metadata; print('pymeshlab', importlib.metadata.version('pymeshlab'), 'OK'); import OCC.Core.BRepBuilderAPI; print('pythonocc-core OK')\" && npm install -g npm-check-updates && npm --prefix /workspace install && npx --prefix /workspace tsc",
+  "forwardPorts": [5000],
+  "portsAttributes": {
+    "5000": {
+      "label": "Flask App",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  },
+  "remoteUser": "root"
+}

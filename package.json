@@ -1,0 +1,25 @@
+{
+  "devDependencies": {
+    "eslint": "^10.4.0",
+    "hadolint": "^0.4.2",
+    "htmlhint": "^1.9.2",
+    "jest": "^30.4.2",
+    "prettier": "^3.8.3",
+    "sass": "^1.100.0",
+    "stylelint": "^17.12.0",
+    "stylelint-config-standard-scss": "^17.0.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch:ts": "tsc --watch",
+    "lint:ts": "eslint \"src/**/*.ts\" \"tests/frontend/**/*.js\" jest.config.js jest-global-script-transform.cjs",
+    "lint:scss": "stylelint src/**/*.scss",
+    "lint:html": "htmlhint src/**/*.html",
+    "lint:docker": "hadolint Dockerfile Dockerfile.base .devcontainer/Dockerfile",
+    "lint": "npm run lint:ts && npm run lint:scss && npm run lint:html && npm run lint:docker",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  }
+}

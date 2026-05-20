@@ -1,0 +1,17 @@
+[MASTER]
+# Allow pylint to import and introspect C extension modules for type checking.
+# pymeshlab exposes MeshSet and PercentageValue via a C extension (pmeshlab),
+# which pylint cannot see without actually importing it.
+extension-pkg-allow-list=pymeshlab
+# Teach pylint about pytest fixture injection so it doesn't report W0621 for
+# test function parameters that shadow module-level fixture functions.
+load-plugins=pylint_pytest
+
+[MESSAGES CONTROL]
+disable =
+    # Test mock/stub classes only need one method; the 2-method minimum is
+    # not meaningful for lightweight test helpers.
+    R0903, # too-few-public-methods
+
+[FORMAT]
+max-line-length = 100
