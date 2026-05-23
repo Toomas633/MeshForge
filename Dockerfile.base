@@ -1,0 +1,105 @@
+# Base image with OCCT 7.9.3, pythonocc-core 7.9.3, and Python 3.13 for MeshForge.
+# Build and publish with:
+# docker buildx build -f Dockerfile.base --platform linux/amd64,linux/arm64 -t ghcr.io/toomas633/meshforge-base:occt7.9.3-py3.14 --push .
+FROM ubuntu:26.04 AS swig-builder
+ARG SWIG_VERSION=4.4.1
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    autoconf automake bison build-essential ca-certificates curl libpcre2-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL \
+    "https://github.com/swig/swig/archive/refs/tags/v${SWIG_VERSION}.tar.gz" \
+    | tar xz -C /tmp \
+    && cd "/tmp/swig-${SWIG_VERSION}" \
+    && ./autogen.sh \
+    && ./configure --prefix=/opt/swig \
+    && SWIG_JOBS=$(awk '/MemTotal/ {j=int($2*0.85/512000); print (j<1?1:j)}' /proc/meminfo) \
+    && make -j"${SWIG_JOBS}" \
+    && make install \
+    && rm -rf "/tmp/swig-${SWIG_VERSION}"
+
+FROM ubuntu:26.04 AS occt-builder
+ARG OCCT_VERSION=7.9.3
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential ca-certificates cmake curl \
+    libfontconfig1-dev libfreetype6-dev libgl1-mesa-dev libglu1-mesa-dev \
+    libx11-dev libxi-dev libxmu-dev \
+    ninja-build rapidjson-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && OCCT_TAG="V$(echo "${OCCT_VERSION}" | tr '.' '_')" \
+    && OCCT_DIR="OCCT-$(echo "${OCCT_VERSION}" | tr '.' '_')" \
+    && curl -fsSL \
+    "https://github.com/Open-Cascade-SAS/OCCT/archive/refs/tags/${OCCT_TAG}.tar.gz" \
+    | tar xz -C /tmp \
+    && cmake \
+    -S "/tmp/${OCCT_DIR}" \
+    -B /tmp/occt-build \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DINSTALL_DIR=/opt/occt \
+    -DCMAKE_INSTALL_PREFIX=/opt/occt \
+    -DBUILD_RELEASE_DISABLE_EXCEPTIONS=OFF \
+    -DBUILD_MODULE_Draw:BOOL=OFF \
+    -DUSE_VTK:BOOL=OFF \
+    -DUSE_FREEIMAGE:BOOL=OFF \
+    -DUSE_OPENVR:BOOL=OFF \
+    && OCCT_JOBS=$(awk '/MemTotal/ {j=int($2*0.85/1024000); print (j<1?1:j)}' /proc/meminfo) \
+    && cmake --build /tmp/occt-build -j"${OCCT_JOBS}" \
+    && cmake --install /tmp/occt-build \
+    && find /opt/occt/lib -name "*.so*" -type f -exec strip --strip-unneeded {} + \
+    && rm -rf /tmp/occt-build "/tmp/${OCCT_DIR}"
+
+FROM ubuntu:26.04 AS pythonocc-builder
+ARG PYTHONOCC_VERSION=7.9.3
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+COPY --from=swig-builder /opt/swig /opt/swig
+COPY --from=occt-builder /opt/occt /opt/occt
+ENV PATH="/opt/swig/bin:${PATH}"
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential ca-certificates cmake curl \
+    libfreetype6-dev libgl1-mesa-dev libglu1-mesa-dev libx11-dev \
+    ninja-build python3-numpy python3.14-dev rapidjson-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && NUMPY_INC=$(python3.14 -c "import numpy; print(numpy.get_include())") \
+    && curl -fsSL \
+    "https://github.com/tpaviot/pythonocc-core/archive/refs/tags/${PYTHONOCC_VERSION}.tar.gz" \
+    | tar xz -C /tmp \
+    && cmake \
+    -S "/tmp/pythonocc-core-${PYTHONOCC_VERSION}" \
+    -B /tmp/pythonocc-build \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DOCCT_INCLUDE_DIR=/opt/occt/include/opencascade \
+    -DOCCT_LIBRARY_DIR=/opt/occt/lib \
+    -DCMAKE_INSTALL_RPATH=/opt/occt/lib \
+    -DPYTHONOCC_INSTALL_DIRECTORY=/opt/pythonocc/OCC \
+    -DPYTHONOCC_WRAP_VISU:BOOL=OFF \
+    "-DCMAKE_CXX_FLAGS=-isystem ${NUMPY_INC}" \
+    && PYTHONOCC_JOBS=$(awk '/MemTotal/ {j=int($2*0.85/1536000); print (j<1?1:j)}' /proc/meminfo) \
+    && cmake --build /tmp/pythonocc-build -j"${PYTHONOCC_JOBS}" \
+    && cmake --install /tmp/pythonocc-build \
+    && find /opt/pythonocc -name "*.so" -exec strip --strip-unneeded {} + \
+    && find /opt/pythonocc \( -name "*.pyc" -o -name "*.pyo" \) -delete \
+    && find /opt/pythonocc -type d -name "__pycache__" -prune -exec rm -rf {} + \
+    && rm -rf /tmp/pythonocc-build "/tmp/pythonocc-core-${PYTHONOCC_VERSION}"
+
+FROM ubuntu:26.04
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libfreetype6 \
+    libgl1 \
+    libosmesa6 \
+    python3.14 \
+    python3.14-venv \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=pythonocc-builder /opt/pythonocc /opt/pythonocc
+COPY --from=occt-builder /opt/occt/lib /opt/occt/lib
+RUN find /opt/occt/lib \( -name "*.cmake" -o -name "*.a" \) -delete \
+    && echo "/opt/occt/lib" > /etc/ld.so.conf.d/occt.conf \
+    && ldconfig
+ENV LIBGL_ALWAYS_SOFTWARE=1
