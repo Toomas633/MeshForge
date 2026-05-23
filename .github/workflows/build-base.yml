@@ -29,7 +29,9 @@ jobs:
         id: tag
         run: |
           OCCT=$(grep 'ARG OCCT_VERSION=' Dockerfile.base | head -1 | cut -d= -f2)
+          OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
           echo "value=occt${OCCT}-py3.14" >> "$GITHUB_OUTPUT"
+          echo "owner=${OWNER}" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -45,7 +47,7 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository_owner }}/meshforge-base:${{ steps.tag.outputs.value }}
-            ghcr.io/${{ github.repository_owner }}/meshforge-base:latest
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/meshforge-base:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/meshforge-base:buildcache,mode=max
+            ghcr.io/${{ steps.tag.outputs.owner }}/meshforge-base:${{ steps.tag.outputs.value }}
+            ghcr.io/${{ steps.tag.outputs.owner }}/meshforge-base:latest
+          cache-from: type=registry,ref=ghcr.io/${{ steps.tag.outputs.owner }}/meshforge-base:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ steps.tag.outputs.owner }}/meshforge-base:buildcache,mode=max
