@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start App",
+      "type": "shell",
+      "command": "flask run --debug --host=0.0.0.0 --port=5000",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "FLASK_APP": "src/app.py",
+          "FLASK_ENV": "development",
+          "LD_LIBRARY_PATH": "/opt/conda/lib"
+        }
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "focus": true,
+        "panel": "new",
+        "label": "Flask App"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Watch SCSS",
+      "type": "shell",
+      "command": "npx sass --watch src/styles/style.scss:static/style.css --style=expanded --no-source-map",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "label": "Sass"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Watch TS",
+      "type": "shell",
+      "command": "npx tsc --watch --preserveWatchOutput",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "label": "TypeScript"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

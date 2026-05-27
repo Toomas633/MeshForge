@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MeshForge</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      if (localStorage.getItem('theme') === 'light')
+        document.documentElement.dataset.theme = 'light';
+    </script>
+  </head>
+  <body>
+    <header>
+      <div class="header-inner">
+        <svg
+          class="logo-icon"
+          viewBox="0 0 32 32"
+          fill="none"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polygon points="16,3 29,10 29,22 16,29 3,22 3,10" stroke="#4f7cff" stroke-width="2" />
+          <line x1="16" y1="3" x2="16" y2="29" stroke="#6b93ff" stroke-width="1.3" />
+          <line x1="3" y1="10" x2="29" y2="22" stroke="#6b93ff" stroke-width="1.3" />
+          <line x1="3" y1="22" x2="29" y2="10" stroke="#6b93ff" stroke-width="1.3" />
+        </svg>
+        <h1>MeshForge</h1>
+        <span class="subtitle">STL / OBJ to clean STEP solid</span>
+      </div>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <svg
+          class="icon-sun"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+        <svg
+          class="icon-moon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+    </header>
+
+    <div class="main-layout">
+      <div class="viewer-panel" id="viewerPanel">
+        <div class="viewer-empty" id="viewerEmpty">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="32,6 58,20 58,44 32,58 6,44 6,20" />
+            <line x1="32" y1="6" x2="32" y2="58" />
+            <line x1="6" y1="20" x2="58" y2="44" />
+            <line x1="6" y1="44" x2="58" y2="20" />
+          </svg>
+          <p>Click a completed job<br />to preview the model</p>
+        </div>
+        <canvas id="viewerCanvas"></canvas>
+      </div>
+
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <button class="add-btn" id="addBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Files
+          </button>
+        </div>
+        <div class="jobs-list" id="jobsList"></div>
+      </aside>
+    </div>
+
+    <div class="modal-overlay" id="addModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Add Files</h2>
+          <button class="modal-close" id="modalClose">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 16V4m0 0L8 8m4-4 4 4" stroke-linecap="round" stroke-linejoin="round" />
+              <path
+                d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+          <p class="drop-primary">Drag &amp; drop files here</p>
+          <p class="drop-secondary">
+            or <span class="browse-link" id="browseLink">browse files</span>
+          </p>
+          <p class="drop-hint">Supports .stl and .obj — multiple files allowed</p>
+          <input type="file" id="fileInput" accept=".stl,.obj" multiple hidden />
+        </div>
+        <ul class="file-list" id="fileList"></ul>
+        <div class="modal-footer">
+          <button class="start-btn" id="startBtn" disabled>
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            Start Conversion
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"
+      integrity="sha384-CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"
+      integrity="sha384-QF8EmP6pyNE+i7WmcltzC4ddzFVKDxfn5WD5gXyKTSE4SCw0R25TI+q0LUlnf7tq"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"
+      integrity="sha384-UWFC8mrevmKCZhKbJ/8/dqLrRAvHArRwJCKjwruJuXyhsebGMFsIK5zrn+R9r+fT"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"
+      integrity="sha384-wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf"
+      crossorigin="anonymous"
+    ></script>
+    <script src="utils/utils.js"></script>
+    <script src="features/mesh-preview.js"></script>
+    <script src="features/viewer.js"></script>
+    <script src="features/jobs.js"></script>
+    <script src="features/sse.js"></script>
+    <script src="main.js"></script>
+  </body>
+</html>

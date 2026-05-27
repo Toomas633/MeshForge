@@ -1,0 +1,13 @@
+# All dependencies — edit here, then re-pin with pip-compile
+# Note: pythonocc-core has no PyPI wheel; it is installed via conda (see Dockerfile)
+
+# Runtime
+Flask
+numpy
+pymeshlab
+# Dev
+black
+pylint
+pylint-pytest
+pytest>=8
+pytest-cov>=6

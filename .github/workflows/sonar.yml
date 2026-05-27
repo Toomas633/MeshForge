@@ -1,0 +1,417 @@
+name: Sonar
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: 'pip install flask==3.1.3 pytest==9.0.3 pytest-cov==7.1.0 --only-binary=:all:'
+
+      - name: Run pytest with coverage
+        run: python -m pytest --cov=src --cov-report=xml:coverage/python/coverage.xml
+        continue-on-error: true
+
+      - name: Upload Python coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-python
+          path: coverage/python/coverage.xml
+
+  test-js:
+    name: JavaScript Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Compile TypeScript
+        run: ./node_modules/.bin/tsc
+
+      - name: Run Jest with coverage
+        run: ./node_modules/.bin/jest --coverage
+        continue-on-error: true
+
+      - name: Upload JS coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-js
+          path: coverage/frontend/lcov.info
+
+  lint-eslint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run ESLint
+        run: mkdir -p reports && npx --ignore-scripts eslint "src/**/*.ts" "tests/frontend/**/*.js" jest.config.js jest-global-script-transform.cjs --format json --output-file reports/eslint-report.json
+        continue-on-error: true
+
+      - name: Upload ESLint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-eslint
+          path: reports/eslint-report.json
+
+  lint-stylelint:
+    name: Stylelint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run Stylelint
+        run: mkdir -p reports && npx --ignore-scripts stylelint "src/**/*.scss" --formatter json --output-file reports/stylelint-report.json
+        continue-on-error: true
+
+      - name: Convert to Sonar generic format
+        if: always()
+        continue-on-error: true
+        run: |
+          node -e "
+            const fs = require('fs');
+            const raw = fs.readFileSync('reports/stylelint-report.json', 'utf8').trim();
+            const report = raw ? JSON.parse(raw) : [];
+            const cwd = process.cwd().replace(/\\\\/g, '/') + '/';
+            const issues = [];
+            for (const file of report) {
+              for (const w of file.warnings || []) {
+                issues.push({
+                  engineId: 'stylelint',
+                  ruleId: w.rule || 'unknown',
+                  severity: w.severity === 'error' ? 'MAJOR' : 'MINOR',
+                  type: 'CODE_SMELL',
+                  primaryLocation: {
+                    message: w.text,
+                    filePath: (file.source || '').replace(cwd, ''),
+                    textRange: {
+                      startLine: w.line || 1,
+                      endLine: w.endLine || w.line || 1,
+                      startColumn: Math.max(0, (w.column || 1) - 1),
+                      endColumn: Math.max(0, (w.endColumn || w.column || 1) - 1)
+                    }
+                  }
+                });
+              }
+            }
+            fs.writeFileSync('reports/stylelint-sonar.json', JSON.stringify({ issues }));
+          "
+
+      - name: Upload Stylelint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-stylelint
+          path: reports/stylelint-sonar.json
+
+  lint-htmlhint:
+    name: HTMLHint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run HTMLHint
+        run: mkdir -p reports && npx --ignore-scripts htmlhint "src/**/*.html" --format json > reports/htmlhint-report.json
+        continue-on-error: true
+
+      - name: Convert to Sonar generic format
+        if: always()
+        continue-on-error: true
+        run: |
+          node -e "
+            const fs = require('fs');
+            const raw = fs.readFileSync('reports/htmlhint-report.json', 'utf8').trim();
+            const report = raw ? JSON.parse(raw) : [];
+            const cwd = process.cwd().replace(/\\\\/g, '/') + '/';
+            const issues = [];
+            for (const file of report) {
+              for (const m of file.messages || []) {
+                issues.push({
+                  engineId: 'htmlhint',
+                  ruleId: (m.rule && m.rule.id) || 'unknown',
+                  severity: m.type === 'error' ? 'MAJOR' : 'MINOR',
+                  type: 'CODE_SMELL',
+                  primaryLocation: {
+                    message: m.message,
+                    filePath: (file.file || '').replace(cwd, ''),
+                    textRange: {
+                      startLine: m.line || 1,
+                      endLine: m.line || 1,
+                      startColumn: Math.max(0, (m.col || 1) - 1),
+                      endColumn: Math.max(0, (m.col || 1) - 1)
+                    }
+                  }
+                });
+              }
+            }
+            fs.writeFileSync('reports/htmlhint-sonar.json', JSON.stringify({ issues }));
+          "
+
+      - name: Upload HTMLHint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-htmlhint
+          path: reports/htmlhint-sonar.json
+
+  lint-hadolint:
+    name: Hadolint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Hadolint
+        run: |
+          curl -sSL https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64 \
+            -o /usr/local/bin/hadolint
+          chmod +x /usr/local/bin/hadolint
+
+      - name: Run Hadolint
+        run: mkdir -p reports && hadolint --format json Dockerfile .devcontainer/Dockerfile > reports/hadolint-report.json
+        continue-on-error: true
+
+      - name: Convert to Sonar generic format
+        if: always()
+        continue-on-error: true
+        run: |
+          node -e "
+            const fs = require('fs');
+            const raw = fs.readFileSync('reports/hadolint-report.json', 'utf8').trim();
+            const report = raw ? JSON.parse(raw) : [];
+            const issues = report.map(issue => ({
+              engineId: 'hadolint',
+              ruleId: issue.code,
+              severity: issue.level === 'error' ? 'MAJOR' : 'MINOR',
+              type: 'CODE_SMELL',
+              primaryLocation: {
+                message: issue.message,
+                filePath: issue.file,
+                textRange: {
+                  startLine: issue.line || 1,
+                  endLine: issue.line || 1,
+                  startColumn: 0,
+                  endColumn: 1
+                }
+              }
+            }));
+            fs.writeFileSync('reports/hadolint-sonar.json', JSON.stringify({ issues }));
+          "
+
+      - name: Upload Hadolint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-hadolint
+          path: reports/hadolint-sonar.json
+
+  lint-pylint:
+    name: Pylint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Miniconda
+        uses: conda-incubator/setup-miniconda@v4
+        with:
+          python-version: '3.13'
+          channels: conda-forge
+          channel-priority: strict
+          activate-environment: lint
+
+      - name: Install dependencies
+        shell: bash -el {0}
+        run: |
+          conda install -y pythonocc-core==7.9.3
+          pip install pylint==4.0.5 pylint-pytest==1.1.8 flask==3.1.3 pytest==8.2.0 pymeshlab==2025.7.post1 --only-binary=:all:
+
+      - name: Run Pylint
+        shell: bash -el {0}
+        run: |
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+          mkdir -p reports && pylint src/app.py src/mesh_pipeline.py tests/test_app.py tests/test_mesh_pipeline.py conftest.py --output-format=json > reports/pylint-report.json
+        continue-on-error: true
+
+      - name: Convert to Sonar generic format
+        if: always()
+        continue-on-error: true
+        run: |
+          node -e "
+            const fs = require('fs');
+            const raw = fs.readFileSync('reports/pylint-report.json', 'utf8').trim();
+            const report = raw ? JSON.parse(raw) : [];
+            const severityMap = { convention: 'INFO', refactor: 'MINOR', warning: 'MINOR', error: 'MAJOR', fatal: 'CRITICAL' };
+            const typeMap = { convention: 'CODE_SMELL', refactor: 'CODE_SMELL', warning: 'CODE_SMELL', error: 'BUG', fatal: 'BUG' };
+            const issues = report
+              .filter(issue => {
+                // E0401 for OCC/pymeshlab are false positives when those C-extension
+                // packages are unavailable in CI; real import errors are caught by pytest.
+                if (issue['message-id'] === 'E0401') {
+                  const msg = issue.message || '';
+                  if (/\b(OCC|pymeshlab)\b/.test(msg)) return false;
+                }
+                return true;
+              })
+              .map(issue => ({
+              engineId: 'pylint',
+              ruleId: issue['message-id'],
+              severity: severityMap[issue.type] || 'MINOR',
+              type: typeMap[issue.type] || 'CODE_SMELL',
+              primaryLocation: {
+                message: issue.message,
+                filePath: issue.path,
+                textRange: {
+                  startLine: issue.line || 1,
+                  endLine: issue.endLine || issue.line || 1,
+                  startColumn: issue.column || 0,
+                  endColumn: issue.endColumn || issue.column || 0
+                }
+              }
+            }));
+            fs.writeFileSync('reports/pylint-sonar.json', JSON.stringify({ issues }));
+          "
+
+      - name: Upload Pylint report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: report-pylint
+          path: reports/pylint-sonar.json
+
+  sonar:
+    name: SonarCloud Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    needs:
+      [test-python, test-js, lint-eslint, lint-stylelint, lint-htmlhint, lint-hadolint, lint-pylint]
+    if: always()
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download Python coverage
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage-python
+          path: coverage/python/
+        continue-on-error: true
+
+      - name: Download JS coverage
+        uses: actions/download-artifact@v8
+        with:
+          name: coverage-js
+          path: coverage/frontend/
+        continue-on-error: true
+
+      - name: Download ESLint report
+        uses: actions/download-artifact@v8
+        with:
+          name: report-eslint
+          path: reports/
+        continue-on-error: true
+
+      - name: Download Stylelint report
+        uses: actions/download-artifact@v8
+        with:
+          name: report-stylelint
+          path: reports/
+        continue-on-error: true
+
+      - name: Download HTMLHint report
+        uses: actions/download-artifact@v8
+        with:
+          name: report-htmlhint
+          path: reports/
+        continue-on-error: true
+
+      - name: Download Hadolint report
+        uses: actions/download-artifact@v8
+        with:
+          name: report-hadolint
+          path: reports/
+        continue-on-error: true
+
+      - name: Download Pylint report
+        uses: actions/download-artifact@v8
+        with:
+          name: report-pylint
+          path: reports/
+        continue-on-error: true
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v8
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

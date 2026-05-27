@@ -1,0 +1,101 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "pylint",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pylint",
+      "args": ["--recursive=y", "src", "tests", "conftest.py", "--output-format=colorized"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "noDebug": true,
+      "justMyCode": true,
+      "clearBeforeRun": true
+    },
+    {
+      "name": "eslint",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/eslint",
+      "args": [
+        "src/**/*.ts",
+        "tests/frontend/**/*.js",
+        "jest.config.js",
+        "jest-global-script-transform.cjs"
+      ],
+      "cwd": "${workspaceFolder}",
+      "noDebug": true,
+      "console": "integratedTerminal",
+      "clearBeforeRun": true
+    },
+    {
+      "name": "stylelint",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/stylelint",
+      "args": ["src/**/*.scss"],
+      "cwd": "${workspaceFolder}",
+      "noDebug": true,
+      "console": "integratedTerminal",
+      "clearBeforeRun": true
+    },
+    {
+      "name": "htmlhint",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/htmlhint",
+      "args": ["src/**/*.html"],
+      "cwd": "${workspaceFolder}",
+      "noDebug": true,
+      "console": "integratedTerminal",
+      "clearBeforeRun": true
+    },
+    {
+      "name": "hadolint",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/hadolint",
+      "args": ["Dockerfile", ".devcontainer/Dockerfile"],
+      "noDebug": true,
+      "console": "integratedTerminal",
+      "clearBeforeRun": true,
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "pytest (with coverage)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["--cov=app", "--cov=mesh_pipeline", "--cov-report=term-missing"],
+      "cwd": "${workspaceFolder}",
+      "noDebug": true,
+      "justMyCode": true
+    },
+    {
+      "name": "jest (with coverage)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": ["--coverage"],
+      "cwd": "${workspaceFolder}",
+      "noDebug": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "MeshForge (Debug)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "flask",
+      "args": ["run", "--debug", "--host=0.0.0.0", "--port=5000"],
+      "env": {
+        "FLASK_APP": "app.py",
+        "FLASK_ENV": "development",
+        "LD_LIBRARY_PATH": "/opt/conda/lib"
+      },
+      "jinja": true,
+      "cwd": "${workspaceFolder}",
+      "justMyCode": false
+    }
+  ]
+}
