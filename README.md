@@ -22,8 +22,8 @@ Convert STL and OBJ mesh files into clean STEP solids — entirely in the browse
 No local Python or Node.js installation required.
 
 ```bash
-docker pull ghcr.io/<owner>/meshforge:latest
-docker run --rm -p 5000:5000 ghcr.io/<owner>/meshforge:latest
+docker pull ghcr.io/toomas633/meshforge:latest
+docker run --rm -p 5000:5000 ghcr.io/toomas633/meshforge:latest
 ```
 
 Then open <http://localhost:5000> in your browser.
@@ -33,7 +33,7 @@ Job directories are ephemeral by default. To persist converted files across cont
 ```bash
 docker run --rm -p 5000:5000 \
   -v meshforge_jobs:/app/jobs \
-  ghcr.io/<owner>/meshforge:latest
+  ghcr.io/toomas633/meshforge:latest
 ```
 
 ## Supported Formats
