@@ -5,7 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-05-20
+## [v1.1] - 2026-05-27
+
+### Changed
+
+- **Docker publish workflow** — replaced single QEMU-emulated build with a native matrix strategy: `linux/amd64` on `ubuntu-24.04` and `linux/arm64` on `ubuntu-24.04-arm`; build and merge are now separate jobs, eliminating emulation overhead
+- **Docker publish trigger** — removed `workflow_dispatch`; added `pull_request: types: [opened]` so every opened PR publishes a branch-tagged image automatically
+- **Docker image tag on PR** — uses the source branch name (sanitized) instead of `dev`
+- **Docker image name** — added a `prepare` job that lowercases `github.repository` before it is used in any registry reference, fixing a build failure on mixed-case repository names
+- **Per-platform build cache** — publish workflow now uses separate `buildcache-amd64` / `buildcache-arm64` cache entries instead of a shared cache, preventing cross-architecture cache collisions
+
+[v1.1]: https://github.com/Toomas633/MeshForge/compare/v1.0...v1.1
+
+## [v1.0] - 2026-05-20
 
 ### Added
 
@@ -47,4 +59,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ESLint 9 (flat config, `typescript-eslint`), Stylelint, HTMLHint, and Hadolint linting
 - SonarCloud integration via `sonar-project.properties`
 
-[1.0.0]: https://github.com/Toomas633/MeshForge/releases/tag/v1.0.0
+[v1.0]: https://github.com/Toomas633/MeshForge/releases/tag/v1.0
